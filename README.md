@@ -121,50 +121,76 @@ See `.env.example` for all available environment variables.
 
 ## Vercel Deployment
 
-### Deploy API (Step 1)
+This monorepo deploys as **two Vercel projects** from the **same GitHub repo**.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNikhi-l%2FNackerNews%2Ftree%2Fclaude%2Fhacker-news-clone-jvSom&root-directory=apps/api&project-name=nacker-news-api&env=DATABASE_URL,JWT_SECRET)
+### Step 1: Create Vercel Postgres Database
 
-1. Click the button above
-2. Connect your GitHub account
-3. Add environment variables:
-   - `DATABASE_URL`: Your Vercel Postgres connection string
+1. Go to [vercel.com/dashboard](https://vercel.com/dashboard)
+2. Click **Storage** → **Create Database** → **Postgres**
+3. Name it `nacker-news-db`
+4. Copy the `DATABASE_URL` for later
+
+### Step 2: Deploy API
+
+1. Go to [vercel.com/new](https://vercel.com/new)
+2. Click **Import Git Repository**
+3. Select `Nikhi-l/NackerNews`
+4. Configure:
+   - **Project Name**: `nacker-news-api`
+   - **Root Directory**: `apps/api`
+5. Add Environment Variables:
+   - `DATABASE_URL`: Paste from Step 1
    - `JWT_SECRET`: Generate with `openssl rand -hex 32`
-4. Deploy
+6. Click **Deploy**
 
-**After deployment, copy the API URL** (e.g., `https://nacker-news-api.vercel.app`)
+**Copy the API URL** (e.g., `https://nacker-news-api.vercel.app`)
 
-### Deploy Web (Step 2)
+### Step 3: Deploy Web
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNikhi-l%2FNackerNews%2Ftree%2Fclaude%2Fhacker-news-clone-jvSom&root-directory=apps/web&project-name=nacker-news-web&env=NEXT_PUBLIC_API_BASE_URL)
+1. Go to [vercel.com/new](https://vercel.com/new) again
+2. Import the **same repo** `Nikhi-l/NackerNews`
+3. Configure:
+   - **Project Name**: `nacker-news-web`
+   - **Root Directory**: `apps/web`
+4. Add Environment Variables:
+   - `NEXT_PUBLIC_API_BASE_URL`: Your API URL from Step 2
+5. Click **Deploy**
 
-1. Click the button above
-2. Add environment variables:
-   - `NEXT_PUBLIC_API_BASE_URL`: The API URL from Step 1
-3. Deploy
+### Step 4: Configure CORS
 
-### Vercel Integrations
+1. Go to your API project in Vercel dashboard
+2. Settings → Environment Variables
+3. Add `CORS_ORIGINS` = your web URL (e.g., `https://nacker-news-web.vercel.app`)
+4. Redeploy the API
 
-1. **Vercel Postgres**: Add from Vercel dashboard → Storage → Create Database
-   - The `DATABASE_URL` will be automatically added to your API project
+### Step 5: Run Database Migrations
 
-2. **Vercel KV** (Optional, for rate limiting): Add from Storage → Create KV
-   - `KV_REST_API_URL` and `KV_REST_API_TOKEN` will be added automatically
+```bash
+# Install Vercel CLI
+npm i -g vercel
 
-### Post-Deployment
+# Link to API project and pull env vars
+cd apps/api
+vercel link
+vercel env pull .env
 
-After both apps are deployed:
-1. Update the API's `CORS_ORIGINS` to include your web app URL
-2. Run database migrations:
-   ```bash
-   # Connect to your Vercel project
-   vercel link
-   vercel env pull .env.local
+# Run migrations
+pip install -r requirements.txt
+alembic upgrade head
+```
 
-   # Run migrations
-   cd apps/api
-   alembic upgrade head
-   ```
+### Auto-Deploy on Push
+
+Once set up, both projects auto-deploy when you push to the repo:
+- Changes in `apps/api/` → API redeploys
+- Changes in `apps/web/` → Web redeploys
+
+### Optional: Vercel KV (Rate Limiting)
+
+1. Go to Vercel dashboard → Storage → Create KV
+2. Link it to your API project
+3. `KV_REST_API_URL` and `KV_REST_API_TOKEN` are added automatically
+4. Redeploy API to enable rate limiting
 
 ## API Documentation
 
