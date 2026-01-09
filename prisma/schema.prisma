@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique @db.VarChar(50)
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  posts        Post[]
+  comments     Comment[]
+  votes        Vote[]
+
+  @@map("users")
+}
+
+model Post {
+  id            Int       @id @default(autoincrement())
+  title         String    @db.VarChar(300)
+  url           String?   @db.VarChar(2048)
+  text          String?   @db.Text
+  authorId      Int       @map("author_id")
+  points        Int       @default(0)
+  commentsCount Int       @default(0) @map("comments_count")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments      Comment[]
+  votes         Vote[]
+
+  @@index([createdAt(sort: Desc)])
+  @@index([points(sort: Desc), createdAt(sort: Desc)])
+  @@map("posts")
+}
+
+model Comment {
+  id        Int       @id @default(autoincrement())
+  postId    Int       @map("post_id")
+  parentId  Int?      @map("parent_id")
+  authorId  Int       @map("author_id")
+  text      String    @db.Text
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, parentId, createdAt])
+  @@map("comments")
+}
+
+model Vote {
+  userId    Int      @map("user_id")
+  postId    Int      @map("post_id")
+  value     Int      // +1 or -1
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@map("votes")
+}
